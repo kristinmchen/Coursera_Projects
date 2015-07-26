@@ -1,75 +1,79 @@
-## Programming Assignment 3
-## 06.28.2015
+## Getting & Cleaning Data
+## Kristin Chen
+## Course Project
+## 07.26.2015
 
-## [4] Ranking Hospitals in ALL STATES
+run_analysis <- function() {
+  
+  ##install and run required packages
+  install.packages("plyr", "data.table", "reshape2")
+  library(plyr)
+  library(data.table)
+  library(reshape2)
+ 
+  setwd("C:/Users/krchen/Documents/R/Coursera/gettingandcleaningdata/")
+  ## Download & unzip files to your working directory
+  
+  #########################################################################
+  ## PART 1: Merges the training and the test sets to create one data set.
+  
+  ## read in subject ID for training and test sets, add "Subject" column label
+  subject_test <- read.table("C:/Users/krchen/Documents/R/Coursera/gettingandcleaningdata/UCI HAR Dataset/test/subject_test.txt", col.names = c("Subject"))
+  subject_train <- read.table("C:/Users/krchen/Documents/R/Coursera/gettingandcleaningdata/UCI HAR Dataset/train/subject_train.txt", col.names = c("Subject"))
+  
+  ## combine train and test sets into single data frame
+  combined.subject <- rbind(subject_test, subject_train)
+  
+  ## read in features DATA for training and testing "x_test" & "x_train" data
+  features_test <-read.table("C:/Users/krchen/Documents/R/Coursera/gettingandcleaningdata/UCI HAR Dataset/test/X_test.txt")
+  features_train <- read.table("C:/Users/krchen/Documents/R/Coursera/gettingandcleaningdata/UCI HAR Dataset/train/X_train.txt")
+  
+  ## combine features training and test data into a single data frame
+  combined.features <- rbind(features_test, features_train)  
+ 
+  ## read in LIST of features names & labels
+  feature_list <- read.table("C:/Users/krchen/Documents/R/Coursera/gettingandcleaningdata/UCI HAR Dataset/features.txt")
 
-rankall <- function(outcome, num = "best") {
-  ##install packages
-  install.packages("dplyr")
-  library(dplyr)
+  ## PART 2: Extracts only the measurements on the mean and standard deviation for each measurement. 
+  ## PART 3: Uses descriptive activity names to name the activities in the data set
+  ## PART 4: Appropriately labels the data set with descriptive variable names. 
   
-  ## Read outcome data
-  outcome_data <- read.csv("outcome-of-care-measures.csv", stringsAsFactors = FALSE)  
+  ##select columns which have mean() and std() in their name
+  features_subset <- grep("-(mean|std)\\(\\)", feature_list[, 2])
   
-  ## Check that state and outcome are valid
-  states <- as.factor(unique(outcome_data$State)) #list of unique states in the dataset
+  ## subset mean & std columns
+  combined.features <- combined.features[, features_subset]
   
-  ## check outcomes are valid
-  ##check outcome is valid
-  outcome_valid <- c("heart attack", "heart failure", "pneumonia") #list of valid outcomes
-  outcomes_indicator <- c(11,17,23) ## list of valid indices for outcomes
-    indicator <- match(tolower(outcome), outcome_valid, nomatch = 0) #identify the index of outcome wanted
-    indicator <- outcomes_indicator[indicator] #index in dat of outcome wanted
+  ## correct column names
+  names(combined.features) <- feature_list[features_subset, 2]
   
-  if (indicator == 0) { #no match found
-    stop ("invalid outcome")
-  }
+  # Use descriptive activity names to name the activities in the data set
   
-  #subset data for specified outcome
-  hospitals.all <- outcome_data[,c(2,7,indicator)]
+  ## read in training and testing activities 
+  activities_test <-  read.table("C:/Users/krchen/Documents/R/Coursera/gettingandcleaningdata/UCI HAR Dataset/test/y_test.txt")
+  activities_train <- read.table("C:/Users/krchen/Documents/R/Coursera/gettingandcleaningdata/UCI HAR Dataset/train/y_train.txt")
   
-  # remove NAs
-  hospitals.all[,3] <- (as.numeric(hospitals.all[,3]))
-  hospitals.all <-na.omit(hospitals.all)
-  colnames(hospitals.all) <- c("hospital", "State", "outcome.value")
+  #Combine training and test activities into single data frame and rename column to "activity" from "V1"
+  combined.activities <- rbind(activities_test, activities_train)
+  colnames(combined.activities) <- "Activity"
   
-  #max rank allowed
-  max.rank <-max(table(hospitals.all$State))
+  ## Recode activity values as descriptive names using the activity labels file 
+  activity_labels <- read.table("C:/Users/krchen/Documents/R/Coursera/gettingandcleaningdata/UCI HAR Dataset/activity_labels.txt")
+  combined.activities[, 1] <- activity_labels[combined.activities[, 1], 2]
   
-  ## check that num is valid  
-  if (num=="best" {
-    num <- 1
-  } else if (num=="worst") {
-  } else {
-    num <- as.numeric(num)
-    if (is.na(num)){
-      stop("Invalid Num")
-    }else if (num > max.rank){
-      return(NA)
-    }
-  }
+  ## Combine Actitivies, Subjects and Features all into one data frame
+  all.data <- cbind(combined.features, combined.activities, combined.subject)
   
-  #rank all hospitals by mortality rate and name of hospital (to break ties)
-  hospitals.all[order(hospitals.all[3], hospitals.all[1]),] -> hospitals.ranked
-  #split data by state (produces a list of data_frames, subset by state)
-  hospitals.by.state<- split(hospitals.all, hospitals.all$State)
+  ## reorder data Show subject then activity then other columns
+  all.data <- all.data[,c(68,67, 1:66)]
+    
+  #####################################################################################
+  ## PART 5: From the data set in step 4, creates a second, independent tidy data set with the average of each variable for each activity and each subject.
   
-  lapply(hospitals.by.state, function(i) { i[2,] }) -> test
+  require(plyr)
   
-  if (num=="worst"){
-    results.by.state <- lapply(hospitals.by.state, function(x) {x[nrow(x),]})
-  } else {
-    results.by.state <- lapply(hospitals.by.state, function(x){ x[num,]})
-  }
-  
-  results <- as.data.frame(do.call(rbind, results.by.state))
-  #rownames are States
-  results[1,]<-rownames(results)
-  #reverse the order
-  results <- results[, 2:1]
-  #match column names to exact output
-  colnames(results) <- c("hospital", "state")
-  #return results
-  results
-  
+  ## get averages of each variable & activity except the first two, Subject & Activity
+  averages.data <- ddply(all.data, .(Subject, Activity), function(x) colMeans(x[, 3:68]))
+  write.table(averages.data,file =  "averages_dataset.txt",row.name=FALSE)
 }
+
