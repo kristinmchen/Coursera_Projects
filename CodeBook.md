@@ -18,8 +18,8 @@ The script `run_analysis.R` performs the 5 steps described in the course project
 
 * `combined.subject`, `combined.features` and `combined.activities` merge the previous datasets to further analysis.
 
-* 'activity_labels' is used with 'combined.activities' to recode the activity values as descriptive names using the activity labels file
+* `activity_labels`is used with 'combined.activities' to recode the activity values as descriptive names using the activity labels file
 
 * `all.data` contains the base data set which combines Actitivies, Subjects and Features all into one data frame with correct labels
 
-* 'averages.data' contains the final data set. This final data set contains the measures for each subject and activity type (30 subjects * 6 activities = 180 rows).  The output file is called 'averages_dataset.txt' and uploaded to this github repository.
+* `averages.data`contains the final data set. This final data set contains the measures for each subject and activity type (30 subjects * 6 activities = 180 rows).  The output file is called `averages_data.txt` and uploaded to this github repository.
